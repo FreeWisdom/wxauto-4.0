@@ -176,7 +176,7 @@ class WeChatMainWnd(WeChatSubWnd):
     def _get_wx_dir(self):
         wxdir = os.path.dirname(self._get_wx_path())
         for d in os.listdir(wxdir):
-            if re.match('\d+\.\d+\.\d+\.\d+', d):
+            if re.match(r'\d+\.\d+\.\d+\.\d+', d):
                 return os.path.join(wxdir, d)
 
     def _get_chatbox(

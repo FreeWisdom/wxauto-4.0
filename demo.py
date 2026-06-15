@@ -151,7 +151,8 @@ class WeChatDemo:
         messages = self.wx.GetAllMessage()
         print(f"当前聊天窗口共 {len(messages)} 条消息")
         for msg in messages:
-            print(f"[{msg.attr}] {msg.sender}: {msg.content}")
+            sender = getattr(msg, 'sender', '我')
+            print(f"[{msg.attr}] {sender}: {msg.content}")
 
     # ------------------------------------------------------------------
     # Listener related features
@@ -279,7 +280,7 @@ class WeChatDemo:
         try:
             end_time = time.time() + duration
             while time.time() < end_time:
-                time.sleep(1)
+                time.sleep(0.1)
         except KeyboardInterrupt:
             print("捕获到 Ctrl+C, 准备退出...")
 

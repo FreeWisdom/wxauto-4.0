@@ -87,7 +87,7 @@ class ChatBox(BaseUISubWnd):
                         chat_info['chat_name'] = cnc.Name
 
                 elif aid == 'chat_count':
-                    chat_info['group_member_count'] = int(re.findall('\d+', control.Name)[0])
+                    chat_info['group_member_count'] = int(re.findall(r'\d+', control.Name)[0])
                     chat_info['chat_type'] = 'group'
                 elif aid == 'company':
                     chat_info['chat_type'] = 'service'
@@ -176,6 +176,7 @@ class ChatBox(BaseUISubWnd):
         SetClipboardFiles(file_path)
         self.editbox.SendKeys('{Ctrl}v')
         self.sendbtn.Click()
+        return WxResponse.success('发送文件成功')
 
     def input_at(self, at_list):
         if isinstance(at_list, str):
