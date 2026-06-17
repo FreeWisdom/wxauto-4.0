@@ -25,7 +25,7 @@ def separator(title=""):
         print("=" * 60)
 
 
-def test_case(desc):
+def case(desc):
     """装饰器风格的测试 case，用于打印标题和捕获异常"""
     def decorator(func):
         def wrapper(*args, **kwargs):

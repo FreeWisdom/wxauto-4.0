@@ -6,7 +6,7 @@ from wxauto4.param import (
 )
 from wxauto4.languages import MENU_OPTIONS
 from wxauto4.ui.component import Menu
-from wxauto4.utils.win32 import SetClipboardText
+from wxauto4.utils.win32 import SetClipboardText, preserve_clipboard_text
 from wxauto4.logger import wxlog
 import time
 from typing import (

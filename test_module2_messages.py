@@ -94,7 +94,7 @@ def ensure_safe_target(wx, target):
     return current_chat_is_allowed(wx)
 
 
-def test_send_msg(wx, target):
+def check_send_msg(wx, target):
     """测试 1: 发送文本消息"""
     print("\n--- 1. SendMsg: 发送文本消息 ---")
     print(f"  发送对象: {target or '(当前聊天窗口)'}")
@@ -118,7 +118,7 @@ def test_send_msg(wx, target):
         return None
 
 
-def test_send_msg_with_at(wx, target):
+def check_send_msg_with_at(wx, target):
     """测试 2: 发送带 @ 的消息（仅群聊有效）"""
     print("\n--- 2. SendMsg: 发送带@消息 ---")
     print(f"  发送对象: {target or '(当前聊天窗口)'}")
@@ -143,7 +143,7 @@ def test_send_msg_with_at(wx, target):
         return None
 
 
-def test_send_msg_no_target(wx):
+def check_send_msg_no_target(wx):
     """测试 3: 不指定 who 参数发送消息"""
     print("\n--- 3. SendMsg: 不指定发送对象 ---")
     if not current_chat_is_allowed(wx):
@@ -163,7 +163,7 @@ def test_send_msg_no_target(wx):
         return None
 
 
-def test_send_files(wx, target):
+def check_send_files(wx, target):
     """测试 4: 发送文件"""
     print("\n--- 4. SendFiles: 发送文件 ---")
     if not os.path.exists(TEST_FILE_PATH):
@@ -191,7 +191,7 @@ def test_send_files(wx, target):
         return None
 
 
-def test_get_all_messages(wx, target):
+def check_get_all_messages(wx, target):
     """测试 5: GetAllMessage 获取当前聊天所有消息"""
     print("\n--- 5. GetAllMessage: 获取当前聊天所有消息 ---")
     if target:
@@ -212,7 +212,7 @@ def test_get_all_messages(wx, target):
         return []
 
 
-def test_get_new_messages(wx, target):
+def check_get_new_messages(wx, target):
     """测试 6: GetNewMessage 获取新消息"""
     print("\n--- 6. GetNewMessage: 获取新消息 ---")
     if target:
@@ -233,7 +233,7 @@ def test_get_new_messages(wx, target):
         return []
 
 
-def test_get_last_message(wx, target):
+def check_get_last_message(wx, target):
     """测试 7: GetLastMessage 获取最后一条消息"""
     print("\n--- 7. GetLastMessage: 获取最后一条消息 ---")
     if target:
@@ -255,7 +255,7 @@ def test_get_last_message(wx, target):
         return None
 
 
-def test_get_msg_by_id(wx, target):
+def check_get_msg_by_id(wx, target):
     """测试 8: GetMessageById 根据 runtime ID 获取消息"""
     print("\n--- 8. GetMessageById: 根据 runtime ID 获取消息 ---")
     if target:
@@ -283,7 +283,7 @@ def test_get_msg_by_id(wx, target):
         traceback.print_exc()
 
 
-def test_get_msg_by_hash(wx, target):
+def check_get_msg_by_hash(wx, target):
     """测试 9: GetMessageByHash 根据哈希值获取消息"""
     print("\n--- 9. GetMessageByHash: 根据哈希值获取消息 ---")
     if target:
@@ -319,7 +319,7 @@ def test_get_msg_by_hash(wx, target):
         traceback.print_exc()
 
 
-def test_subwindow_messages(wx, target):
+def check_subwindow_messages(wx, target):
     """测试 10: 通过子窗口发送和获取消息"""
     print("\n--- 10. 子窗口消息操作 ---")
     if not target:
@@ -376,16 +376,16 @@ def run_all_tests():
         print(f"  [结果] 安全切换{'成功' if result else '失败'}")
 
     # 执行测试
-    test_send_msg(wx, target)
-    test_send_msg_with_at(wx, target)
-    test_send_msg_no_target(wx)
-    test_send_files(wx, target)
-    test_get_all_messages(wx, target)
-    test_get_new_messages(wx, target)
-    test_get_last_message(wx, target)
-    test_get_msg_by_id(wx, target)
-    test_get_msg_by_hash(wx, target)
-    test_subwindow_messages(wx, target)
+    check_send_msg(wx, target)
+    check_send_msg_with_at(wx, target)
+    check_send_msg_no_target(wx)
+    check_send_files(wx, target)
+    check_get_all_messages(wx, target)
+    check_get_new_messages(wx, target)
+    check_get_last_message(wx, target)
+    check_get_msg_by_id(wx, target)
+    check_get_msg_by_hash(wx, target)
+    check_subwindow_messages(wx, target)
 
     separator("测试模块2 完成")
 

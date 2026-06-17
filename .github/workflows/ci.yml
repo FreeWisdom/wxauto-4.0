@@ -30,7 +30,10 @@ jobs:
         run: |
           python -c "import wxauto4; print('exports:', wxauto4.__all__)"
 
-      - name: Collect test_module1_basic
+      - name: Verify test file imports
         run: |
-          pip install pytest
-          python -m pytest test_module1_basic.py --collect-only -q
+          python -c "import test_module1_basic; print('test_module1_basic OK')"
+          python -c "import test_module2_messages; print('test_module2_messages OK')"
+          python -c "import test_module3_listener; print('test_module3_listener OK')"
+          python -c "import test_module4_windows_moments; print('test_module4_windows_moments OK')"
+          python -c "import test_at; print('test_at OK')"

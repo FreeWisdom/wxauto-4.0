@@ -20,6 +20,7 @@ from wxauto4.logger import wxlog
 from wxauto4.param import WxParam, WxResponse
 from wxauto4.ui.base import BaseUISubWnd
 from wxauto4.utils.tools import find_all_windows_from_root
+from wxauto4.utils.win32 import SetClipboardText, preserve_clipboard_text
 
 
 def _lang(key: str) -> str:
