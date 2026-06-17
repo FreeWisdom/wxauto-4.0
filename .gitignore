@@ -1,3 +1,30 @@
 *.ipynb
 wxauto_logs
 __pycache__
+
+# 调试与探针脚本（本地开发产物，不发布）
+debug_*.py
+probe_*.py
+probe_output*.txt
+test_report*.md
+wxauto4_safe_test_file.txt
+
+# Python 构建与虚拟环境
+*.egg-info/
+*.egg
+build/
+dist/
+.venv/
+venv/
+.env
+
+# 测试与覆盖率
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
