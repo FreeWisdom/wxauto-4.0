@@ -68,7 +68,7 @@ class WeChatSubWnd(BaseUISubWnd):
         for hwnd in get_windows_by_pid(self.pid):
             try:
                 wins.append(uia.ControlFromHandle(hwnd))
-            except:
+            except Exception:
                 pass
         ignore_cls = ['basepopupshadow', 'popupshadow']
         return [win for win in wins if win.ClassName not in ignore_cls]

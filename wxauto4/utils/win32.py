@@ -12,6 +12,7 @@ import traceback
 import pyperclip
 import psutil
 import ctypes
+from contextlib import contextmanager
 from PIL import Image
 from wxauto4 import uia
 
@@ -66,7 +67,7 @@ def GetVersionByPath(file_path):
                                         win32api.LOWORD(info['FileVersionMS']),
                                         win32api.HIWORD(info['FileVersionLS']),
                                         win32api.LOWORD(info['FileVersionLS']))
-    except:
+    except Exception:
         version = None
     return version
 
@@ -242,11 +243,38 @@ def SetClipboardData(data_dict):
         # 关闭剪贴板
         try:
             win32clipboard.CloseClipboard()
-        except:
+        except Exception:
             pass
 
 def SetClipboardText(text: str):
     pyperclip.copy(text)
+
+
+@contextmanager
+def preserve_clipboard_text():
+    """备份并恢复剪贴板文本内容。
+
+    发送消息/文件/评论等操作通过剪贴板传输内容时,会覆盖用户原剪贴板。
+    本 contextmanager 在进入前备份文本,退出后恢复,避免静默清空用户复制的
+    密码、验证码、链接等内容。
+
+    注意:只处理文本格式(CF_UNICODETEXT),不处理文件(CF_HDROP)、图片等。
+    备份或恢复失败时静默忽略(剪贴板操作可能在锁屏、远程桌面等场景下异常)。
+    """
+
+    backup = None
+    try:
+        backup = pyperclip.paste()
+    except Exception:
+        backup = None
+    try:
+        yield
+    finally:
+        if backup:
+            try:
+                pyperclip.copy(backup)
+            except Exception:
+                pass
 
 
 class DROPFILES(ctypes.Structure):
@@ -338,7 +366,7 @@ def set_files_to_clipboard(file_paths):
         # 关闭剪贴板
         try:
             win32clipboard.CloseClipboard()
-        except:
+        except Exception:
             pass
 
 def SetClipboardFiles(paths):
@@ -365,7 +393,7 @@ def PasteFile(folder):
             else:
                 print("剪贴板中没有文件")
                 return False
-        except:
+        except Exception:
             pass
         finally:
             win32clipboard.CloseClipboard()
@@ -405,5 +433,5 @@ def get_windows_by_pid(pid):
         try:
             windows = enum_windows_by_pid(pid)
             return windows
-        except :
+        except Exception:
             time.sleep(0.1)

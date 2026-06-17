@@ -47,7 +47,7 @@ class Listener(ABC):
                 wxlog.debug("监听消息终止")
                 self._listener_stop()
                 break
-            except:
+            except Exception:
                 wxlog.debug(f'监听消息失败：{traceback.format_exc()}')
             time.sleep(WxParam.LISTEN_INTERVAL)
 
@@ -226,7 +226,7 @@ class WeChat(Chat, Listener):
     def _get_listen_messages(self):
         try:
             sys.stdout.flush()
-        except:
+        except Exception:
             pass
         temp_listen = self.listen.copy()
         for who in temp_listen:
@@ -235,7 +235,7 @@ class WeChat(Chat, Listener):
                 if chat is None or not chat._api.exists():
                     self.RemoveListenChat(who)
                     continue
-            except:
+            except Exception:
                 continue
             with self._lock:
                 msgs = chat.GetNewMessage()

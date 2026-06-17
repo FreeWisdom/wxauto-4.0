@@ -44,16 +44,17 @@ class SessionBox:
             return []
 
     def search(
-            self, 
+            self,
             keywords: str,
             force: bool = False,
             force_wait: Union[float, int] = 0.5
         ):
         self.searchbox.RightClick()
-        SetClipboardText(keywords)
-        menu = Menu(self)
-        menu.select('粘贴')
-        self.searchbox.MiddleClick()
+        with preserve_clipboard_text():
+            SetClipboardText(keywords)
+            menu = Menu(self)
+            menu.select('粘贴')
+            self.searchbox.MiddleClick()
 
         search_result = self.search_content.ListControl()
 

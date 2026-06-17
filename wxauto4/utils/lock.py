@@ -18,7 +18,7 @@ AsyncReturn = TypeVar("AsyncReturn")
 class LockManager:
     """提供跨线程/进程/异步的锁。"""
 
-    process_lock = multiprocessing.Lock()
+    process_lock = multiprocessing.RLock()
     thread_lock = threading.RLock()
     _async_lock: asyncio.Lock | None = None
 
@@ -43,9 +43,13 @@ class LockManager:
     def acquire(cls):
         """同步环境下获取锁。"""
 
-        with cls.process_lock:
-            with cls.thread_lock:
-                yield
+        try:
+            with cls.process_lock:
+                with cls.thread_lock:
+                    yield
+        except (InterruptedError, KeyboardInterrupt):
+            # Ctrl+C 等信号打断了锁等待，安全退出
+            yield
 
     @classmethod
     @asynccontextmanager

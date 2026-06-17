@@ -41,14 +41,14 @@ class BaseUIWnd(ABC):
         try:
             for i in range(2):
                 self.control.SendKeys('{Esc}')
-        except:
+        except Exception:
             pass
 
     def exists(self, wait=0):
         try:
             result = self.control.Exists(wait)
             return result
-        except:
+        except Exception:
             return False
 
 class BaseUISubWnd(BaseUIWnd):

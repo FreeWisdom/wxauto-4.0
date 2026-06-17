@@ -7,15 +7,45 @@ authors = [
 ]
 readme = "README.md"
 requires-python = ">=3.9,<3.14"
-dependencies = [
-    "tenacity",
-    "pywin32",
-    "pyperclip",
-    "pillow",
-    "psutil",
-    "colorama",
-    "comtypes"
+keywords = [
+    "wechat",
+    "wxauto",
+    "wechat-automation",
+    "uiautomation",
+    "微信自动化",
+    "wechat-bot"
 ]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: Microsoft :: Windows :: Windows 10",
+    "Operating System :: Microsoft :: Windows :: Windows 11",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Communications :: Chat"
+]
+dependencies = [
+    "tenacity>=8.0,<10",
+    "pywin32>=306",
+    "pyperclip>=1.8",
+    "pillow>=9.0",
+    "psutil>=5.9",
+    "colorama>=0.4",
+    "comtypes>=1.2",
+    "uiautomation>=2.0,<3",
+]
+
+[project.urls]
+Homepage = "https://github.com/cluic/wxauto4"
+Repository = "https://github.com/cluic/wxauto4"
+Issues = "https://github.com/cluic/wxauto4/issues"
+"WeChat 4.0.5 Download" = "https://github.com/SiverKing/wechat4.0-windows-versions/releases"
 
 [project.scripts]
 wxauto4 = "wxauto4.__main__:main"

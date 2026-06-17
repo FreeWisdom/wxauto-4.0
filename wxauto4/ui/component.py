@@ -3,7 +3,8 @@ from wxauto4.utils.win32 import (
     FindWindow,
     GetAllWindows,
     SetClipboardText,
-    ReadClipboardData
+    ReadClipboardData,
+    preserve_clipboard_text,
 )
 from wxauto4.utils.tools import (
     find_window_from_root,
@@ -265,7 +266,7 @@ class WeChatImage(BaseUISubWnd):
                     continue
                 wxlog.debug(f"读取到图片/视频路径[{os.path.exists(path)}, {os.path.getsize(path)}]：{path}")
                 break
-            except:
+            except Exception:
                 if n > 3:
                     return WxResponse.failure('微信BUG无法获取该图片，请重新获取')
                 n += 1

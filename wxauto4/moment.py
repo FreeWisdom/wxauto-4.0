@@ -255,6 +255,11 @@ class MomentList(BaseUISubWnd):
         self.parent = parent
         self.root = parent.root
         self.control = self._locate_list(parent)
+        # 初次定位失败时,等待朋友圈控件渲染后再重试一次,缓解 refresh=True 返回 0 条的问题
+        if self.control is None:
+            import time as _time
+            _time.sleep(1.0)
+            self.control = self._locate_list(parent)
         self._items: Optional[List[MomentItem]] = None
 
     def _locate_list(self, parent: 'Moment') -> Optional[uia.Control]:
@@ -277,11 +282,7 @@ class MomentList(BaseUISubWnd):
 
             class_name = getattr(ctrl, 'ClassName', '') or ''
             automation_id = getattr(ctrl, 'AutomationId', '') or ''
-            if ctrl.ControlTypeName == 'ListControl' and ('Moment' in class_name or 'moment' in automation_id.lower()):
-                wxlog.debug(f'找到疑似朋友圈列表控件：{class_name}')
-                return ctrl
 
-            # 朋友圈列表一般会包含“评论”按钮
             children = []
             try:
                 children = ctrl.GetChildren()
@@ -289,13 +290,32 @@ class MomentList(BaseUISubWnd):
                 children = []
 
             if ctrl.ControlTypeName == 'ListControl':
+                # 启发式 1(原):ClassName 含 Moment / AutomationId 含 moment
+                if 'Moment' in class_name or 'moment' in automation_id.lower():
+                    wxlog.debug(f'找到疑似朋友圈列表控件(启发式 1):{class_name}')
+                    return ctrl
+
+                # 启发式 2(原):子节点含 Name='评论' 按钮
                 for child in children:
                     try:
                         if getattr(child, 'Name', '') == _lang('评论'):
-                            wxlog.debug('通过子元素匹配到朋友圈列表控件')
+                            wxlog.debug('通过子元素匹配到朋友圈列表控件(启发式 2)')
                             return ctrl
                     except Exception:
                         continue
+
+                # 启发式 3(新):ListControl 含多个列表项子节点,放宽匹配
+                # 微信 4.x 真实朋友圈列表 ClassName 常不含 Moment,只靠 ListControl+列表项
+                # 数量也能识别
+                list_item_count = sum(
+                    1 for c in children
+                    if getattr(c, 'ControlTypeName', '') in {'ListItemControl', 'CustomControl'}
+                )
+                if list_item_count >= 3:
+                    wxlog.debug(
+                        f'通过 ListControl + {list_item_count} 个列表项匹配朋友圈(启发式 3):{class_name}'
+                    )
+                    return ctrl
 
             queue.extend(children)
 
@@ -587,20 +607,16 @@ class MomentCommentDialog(BaseUISubWnd):
             return WxResponse.failure('未找到评论输入框')
 
         try:
-            from wxauto4.utils.win32 import SetClipboardText
-        except Exception:
-            SetClipboardText = None  # type: ignore
-
-        try:
             self.edit.Click()
             self.edit.SendKeys('{Ctrl}a')
-            if SetClipboardText:
-                SetClipboardText(content)
-                self.edit.SendKeys('{Ctrl}v')
-            else:
-                # 退化方案：直接键入
-                for ch in content:
-                    self.edit.SendKeys(ch)
+            with preserve_clipboard_text():
+                if SetClipboardText:
+                    SetClipboardText(content)
+                    self.edit.SendKeys('{Ctrl}v')
+                else:
+                    # 退化方案：直接键入
+                    for ch in content:
+                        self.edit.SendKeys(ch)
 
             if self.send_button and self.send_button.Exists(0):
                 self.send_button.Click()

@@ -10,11 +10,24 @@ class WxParam:
     # 是否启用日志文件
     ENABLE_FILE_LOGGER: bool = True
 
+    # 日志目录。默认在用户家目录下,可通过环境变量 WXAUTO4_LOG_DIR 覆盖。
+    # 作为库被嵌入时,不再污染调用方工作目录。
+    LOG_DIR: str = os.environ.get(
+        'WXAUTO4_LOG_DIR',
+        os.path.join(os.path.expanduser('~'), '.wxauto4', 'logs'),
+    )
+
     # 下载文件/图片默认保存路径
     DEFAULT_SAVE_PATH: str = os.path.join(os.getcwd(), 'wxauto4文件下载')
 
     # 是否启用消息哈希值用于辅助判断消息，开启后会稍微影响性能
     MESSAGE_HASH: bool = False
+
+    # 群聊发送者无法从 UIA 控件树解析时，是否启用 Windows OCR 兜底
+    ENABLE_SENDER_OCR: bool = True
+
+    # 单次 OCR 识别超时时间，单位秒
+    SENDER_OCR_TIMEOUT: int = 8
 
     # 头像到消息X偏移量，用于消息定位，点击消息等操作
     DEFAULT_MESSAGE_XBIAS = 51
@@ -37,6 +50,10 @@ class WxParam:
 
     # 发送文件超时时间，单位秒
     SEND_FILE_TIMEOUT: int = 10
+
+    # 单个发送文件大小上限(字节)。0 表示不限制。
+    # 用于防止误发超大或敏感文件(如 SAM、pagefile 等)。
+    MAX_FILE_SIZE: int = 0
 
 class WxResponse(dict):
     def __init__(self, status: str, message: str, data: dict = None):

@@ -6,7 +6,8 @@ from wxauto4.param import (
 from wxauto4.utils.win32 import (
     SetClipboardFiles,
     SetClipboardData,
-    SetClipboardText
+    SetClipboardText,
+    preserve_clipboard_text,
 )
 from wxauto4.ui.component import (
     Menu
@@ -26,32 +27,31 @@ def truncate_string(s: str, n: int=8) -> str:
     s = s.replace('\n', '').strip()
     return s if len(s) <= n else s[:n] + '...'
 
-USED_MSG_IDS = {}
-LAST_MSG_COUNT = {}
 
 class ChatBox(BaseUISubWnd):
     def __init__(self, control: uia.Control, parent):
         self.control: uia.Control = control
         self.root = parent
         self.parent = parent  # `wx` or `chat`
+        # 每个实例独立维护已处理消息 id 与上次消息计数。
+        # 历史上是模块级 dict(USED_MSG_IDS / LAST_MSG_COUNT),多账号场景下
+        # 不同实例共享同一份状态会出错,且 dict 永不清理导致长跑内存泄漏。
+        self._used_msg_ids: tuple = tuple()
+        self._last_msg_count: int = 0
         self.init()
 
     def _lang(self, text: str):
         return text
-    
+
     @property
     def id(self):
         if self.msgbox.Exists(0):
             return self.msgbox.runtimeid
         return None
-    
+
     @property
     def used_msg_ids(self):
-        if self.id in USED_MSG_IDS:
-            return USED_MSG_IDS[self.id]
-        else:
-            USED_MSG_IDS[self.id] = tuple()
-            return USED_MSG_IDS[self.id]
+        return self._used_msg_ids
     
     @property
     def who(self):
@@ -106,12 +106,12 @@ class ChatBox(BaseUISubWnd):
         self.sendbtn = self.control.ButtonControl(Name=self._lang('发送(S)'))
         self.tools = self.control.ToolBarControl()
         self._empty = False
-        # self._now_chat_info = self.get_info()
-        # self.id = self.msgbox.runtimeid
-        if (cid := self.id) and cid not in USED_MSG_IDS:
-            # print("init chatbox", cid)
-            USED_MSG_IDS[self.id] = tuple((i.runtimeid for i in self.msgbox.GetChildren()))
-            if not USED_MSG_IDS[cid]:
+        # 仅在尚未初始化时填充基线,避免重复调用 init() 时清空已有状态
+        if not self._used_msg_ids and self.id:
+            msg_controls = [i for i in self.msgbox.GetChildren() if i.ControlTypeName == 'ListItemControl']
+            self._used_msg_ids = tuple(i.runtimeid for i in msg_controls)
+            self._last_msg_count = len(msg_controls)
+            if not self._used_msg_ids:
                 self._empty = True
 
     def clear_edit(self):
@@ -122,35 +122,36 @@ class ChatBox(BaseUISubWnd):
 
 
     def send_text(self, content: str):
-        self._show()
-        t0 = time.time()
-        while True:
-            if time.time() - t0 > 10:
-                return WxResponse.failure(f'Timeout --> {self.who} - {content}')
-            SetClipboardText(content)
-            self._activate_editbox()
-            self.editbox.SendKeys('{Ctrl}v')
-            if self.editbox.GetValuePattern().Value.replace('￼', '').strip():
-                break
-            self.editbox.SendKeys('{Ctrl}v')
-            if self.editbox.GetValuePattern().Value.replace('￼', '').strip():
-                break
-            self.editbox.RightClick()
-            menu = Menu(self)
-            menu.select('粘贴')
-            if self.editbox.GetValuePattern().Value.replace('￼', '').strip():
-                break
-        t0 = time.time()
-        while self.editbox.GetValuePattern().Value:
-            if time.time() - t0 > 10:
-                return WxResponse.failure(f'Timeout --> {self.who} - {content}')
-            self._activate_editbox()
+        with preserve_clipboard_text():
+            self._show()
+            t0 = time.time()
+            while True:
+                if time.time() - t0 > 10:
+                    return WxResponse.failure(f'Timeout --> {self.who} - {content}')
+                SetClipboardText(content)
+                self._activate_editbox()
+                self.editbox.SendKeys('{Ctrl}v')
+                if self.editbox.GetValuePattern().Value.replace('￼', '').strip():
+                    break
+                self.editbox.SendKeys('{Ctrl}v')
+                if self.editbox.GetValuePattern().Value.replace('￼', '').strip():
+                    break
+                self.editbox.RightClick()
+                menu = Menu(self)
+                menu.select('粘贴')
+                if self.editbox.GetValuePattern().Value.replace('￼', '').strip():
+                    break
+            t0 = time.time()
+            while self.editbox.GetValuePattern().Value:
+                if time.time() - t0 > 10:
+                    return WxResponse.failure(f'Timeout --> {self.who} - {content}')
+                self._activate_editbox()
 
-            self.sendbtn.Click()
-            if not self.editbox.GetValuePattern().Value:
-                return WxResponse.success(f"success")
-            elif not self.editbox.GetValuePattern().Value.replace('￼', '').strip():
-                return self.send_text(content)
+                self.sendbtn.Click()
+                if not self.editbox.GetValuePattern().Value:
+                    return WxResponse.success(f"success")
+                elif not self.editbox.GetValuePattern().Value.replace('￼', '').strip():
+                    return self.send_text(content)
 
     def send_msg(self, content: str, clear: bool=True, at=None):
         wxlog.debug(f"发送消息: {content}")
@@ -169,13 +170,31 @@ class ChatBox(BaseUISubWnd):
         wxlog.debug(f"发送文件: {file_path}")
         if isinstance(file_path, str):
             file_path = [file_path]
-        file_path = [os.path.abspath(f) for f in file_path]
-        
+
+        abs_paths = []
+        for f in file_path:
+            abs_f = os.path.abspath(f)
+            if not os.path.isfile(abs_f):
+                return WxResponse.failure(f"文件不存在或不是普通文件: {abs_f}")
+            max_size = getattr(WxParam, 'MAX_FILE_SIZE', 0)
+            if max_size > 0:
+                try:
+                    size = os.path.getsize(abs_f)
+                except OSError as e:
+                    return WxResponse.failure(f"读取文件大小失败: {e}")
+                if size > max_size:
+                    return WxResponse.failure(
+                        f"文件过大({size} bytes),超过上限 {max_size} bytes: {abs_f}"
+                    )
+            abs_paths.append(abs_f)
+        file_path = abs_paths
+
         self.clear_edit()
 
-        SetClipboardFiles(file_path)
-        self.editbox.SendKeys('{Ctrl}v')
-        self.sendbtn.Click()
+        with preserve_clipboard_text():
+            SetClipboardFiles(file_path)
+            self.editbox.SendKeys('{Ctrl}v')
+            self.sendbtn.Click()
         return WxResponse.success('发送文件成功')
 
     def input_at(self, at_list):
@@ -202,41 +221,41 @@ class ChatBox(BaseUISubWnd):
         msg_controls = self.msgbox.GetChildren()
         now_msg_ids = tuple((i.runtimeid for i in msg_controls))
         current_msg_count = len(now_msg_ids)
-        
+
         if not now_msg_ids:  # 当前没有消息id
             return []
-        
+
         # 确保used_msg_ids不为None
-        current_used_ids = self.used_msg_ids or tuple()
-        
+        current_used_ids = self._used_msg_ids or tuple()
+
         if self._empty and current_used_ids:
             self._empty = False
-        
+
         # 获取上次记录的消息数量
-        last_msg_count = LAST_MSG_COUNT.get(self.id, 0)
-        
+        last_msg_count = self._last_msg_count
+
         # 如果没有历史消息id，初始化
         if not current_used_ids:
             if not self._empty:
                 # 初始化时记录当前所有消息id和数量
-                USED_MSG_IDS[self.id] = now_msg_ids[-100:]
-                LAST_MSG_COUNT[self.id] = current_msg_count
+                self._used_msg_ids = now_msg_ids[-100:]
+                self._last_msg_count = current_msg_count
                 return []
-        
+
         # 关键改进：基于消息数量变化的检测机制
         msg_count_increased = current_msg_count > last_msg_count
-        
+
         if msg_count_increased:
             # 消息数量增加了，计算新消息数量
             new_msg_count = current_msg_count - last_msg_count
-            
+
             # 取最后N条消息作为候选新消息
             candidate_new_ids = now_msg_ids[-new_msg_count:]
-            
+
             # 验证这些ID确实是新的（排除可能的ID重用情况）
             used_msg_ids_set = set(current_used_ids)
             confirmed_new_ids = []
-            
+
             for msg_id in candidate_new_ids:
                 if msg_id not in used_msg_ids_set:
                     confirmed_new_ids.append(msg_id)
@@ -245,34 +264,34 @@ class ChatBox(BaseUISubWnd):
                 elif msg_count_increased and len(confirmed_new_ids) < new_msg_count:
                     # 对于疑似重复ID的情况，仍然当作新消息处理
                     confirmed_new_ids.append(msg_id)
-            
+
             if confirmed_new_ids:
                 # 更新记录
-                USED_MSG_IDS[self.id] = now_msg_ids[-100:]
-                LAST_MSG_COUNT[self.id] = current_msg_count
-                
+                self._used_msg_ids = now_msg_ids[-100:]
+                self._last_msg_count = current_msg_count
+
                 # 根据新消息id获取对应的控件
                 new_controls = [i for i in msg_controls if i.runtimeid in confirmed_new_ids]
-                
+
                 return [
-                        parse_msg(msg_control, self) 
-                        for msg_control 
+                        parse_msg(msg_control, self)
+                        for msg_control
                         in new_controls
                         if msg_control.ControlTypeName == 'ListItemControl'
                     ]
-        
+
         # 如果消息数量没有增加，但可能有ID变化（处理消息刷新的情况）
         used_msg_ids_set = set(current_used_ids)
         new_ids = [msg_id for msg_id in now_msg_ids if msg_id not in used_msg_ids_set]
-        
+
         if new_ids:
             # 更新记录
-            USED_MSG_IDS[self.id] = now_msg_ids[-100:]
-            LAST_MSG_COUNT[self.id] = current_msg_count
-            
+            self._used_msg_ids = now_msg_ids[-100:]
+            self._last_msg_count = current_msg_count
+
             # 根据新消息id获取对应的控件
             new_controls = [i for i in msg_controls if i.runtimeid in new_ids]
-            
+
             return [
                     parse_msg(msg_control, self)
                     for msg_control
@@ -284,19 +303,19 @@ class ChatBox(BaseUISubWnd):
 
     def _update_used_msg_ids(self):
         if not self.msgbox.Exists(0):
-            USED_MSG_IDS[self.id] = tuple()
-            LAST_MSG_COUNT[self.id] = 0
+            self._used_msg_ids = tuple()
+            self._last_msg_count = 0
             return
         msg_controls = [
             ctrl for ctrl in self.msgbox.GetChildren()
             if ctrl.ControlTypeName == 'ListItemControl'
         ]
         if not msg_controls:
-            USED_MSG_IDS[self.id] = tuple()
-            LAST_MSG_COUNT[self.id] = 0
+            self._used_msg_ids = tuple()
+            self._last_msg_count = 0
             return
-        USED_MSG_IDS[self.id] = tuple(ctrl.runtimeid for ctrl in msg_controls[-100:])
-        LAST_MSG_COUNT[self.id] = len(msg_controls)
+        self._used_msg_ids = tuple(ctrl.runtimeid for ctrl in msg_controls[-100:])
+        self._last_msg_count = len(msg_controls)
 
     def _iter_message_controls(self) -> Iterable[uia.Control]:
         if not self.msgbox.Exists(0):
@@ -307,22 +326,21 @@ class ChatBox(BaseUISubWnd):
             if ctrl.ControlTypeName == 'ListItemControl'
         ]
 
-    def _normalize_msg_id(self, msg_id: Union[Sequence[int], str, None]) -> Optional[Tuple[int, ...]]:
+    def _normalize_msg_id(self, msg_id: Union[Sequence[int], str, None]) -> Optional[str]:
+        """规范化消息 ID,返回与 ``control.runtimeid`` 直接可比较的字符串。
+
+        uiautomation 的 ``runtimeid`` 实现为 ``''.join(str(i) for i in GetRuntimeId())``,
+        即把整数序列无分隔拼接成字符串(如 ``(1, 2, 3)`` → ``"123"``)。
+        这里做相同的规范化,以便 ``msg_control.runtimeid == normalized_id`` 能成立。
+        """
         if msg_id is None:
             return None
         if isinstance(msg_id, str):
-            parts = re.findall(r"\d+", msg_id)
-            if not parts:
-                return None
-            return tuple(int(p) for p in parts)
-        if isinstance(msg_id, tuple):
+            s = msg_id.strip()
+            return s or None
+        if isinstance(msg_id, (tuple, list)):
             try:
-                return tuple(int(p) for p in msg_id)
-            except (TypeError, ValueError):
-                return None
-        if isinstance(msg_id, list):
-            try:
-                return tuple(int(p) for p in msg_id)
+                return ''.join(str(int(p)) for p in msg_id)
             except (TypeError, ValueError):
                 return None
         return None

@@ -15,6 +15,9 @@ LICENSE_FILE = LICENSE_DIR / "license.json"
 REQUEST_FILE = LICENSE_DIR / "license_request.json"
 DEBUG_REQUEST_FILE = LICENSE_DIR / "license_request.debug.json"
 
+# 授权文件大小上限(1MB),防止误读超大文件
+MAX_LICENSE_FILE_SIZE = 1024 * 1024
+
 
 def _ensure_dir() -> None:
     LICENSE_DIR.mkdir(parents=True, exist_ok=True)
@@ -40,6 +43,12 @@ def _write_json(path: Path, data: Dict[str, Any]) -> None:
         "generated_at": datetime.utcnow().isoformat(timespec="seconds"),
     }
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding=ENCODING)
+    # 限制文件权限为属主可读写,防止授权码明文被同机其他用户读取
+    # (Windows 上 chmod 行为有限,但仍尽量收紧)
+    try:
+        path.chmod(0o600)
+    except OSError:
+        pass
     print(f"已生成文件: {path}")
 
 
@@ -60,9 +69,19 @@ def authenticate(code: str) -> None:
 def authenticate_with_file(path: str) -> None:
     """从授权文件导入授权信息。"""
 
-    file_path = Path(path).expanduser()
+    file_path = Path(path).expanduser().resolve()
     if not file_path.exists():
         raise FileNotFoundError(f"未找到授权文件: {file_path}")
+
+    # 大小校验,防止读入超大/异常文件
+    try:
+        size = file_path.stat().st_size
+    except OSError as e:
+        raise OSError(f"无法读取授权文件大小: {e}") from e
+    if size > MAX_LICENSE_FILE_SIZE:
+        raise ValueError(
+            f"授权文件过大({size} bytes > {MAX_LICENSE_FILE_SIZE} bytes),疑似异常"
+        )
 
     text = file_path.read_text(encoding=ENCODING).strip()
     try:
