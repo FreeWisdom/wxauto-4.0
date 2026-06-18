@@ -7,6 +7,7 @@ from wxauto4.param import (
 from wxauto4.languages import MENU_OPTIONS
 from wxauto4.ui.component import Menu
 from wxauto4.utils.win32 import SetClipboardText, preserve_clipboard_text
+from wxauto4.utils.lock import uilock
 from wxauto4.logger import wxlog
 import time
 from typing import (
@@ -67,11 +68,11 @@ class SessionBox:
     
     def switch_chat(
         self,
-        keywords: str, 
+        keywords: str,
         exact: bool = True,
         force: bool = False,
         force_wait: Union[float, int] = 0.5
-    ):
+    ) -> Union[str, None]:
         wxlog.debug(f"切换聊天窗口: {keywords}, {exact}, {force}, {force_wait}")
         search_box = self.search_content.ListControl()
         search_result = self.search(keywords, force, force_wait)
@@ -190,7 +191,7 @@ class SessionElement:
     def roll_into_view(self):
         uia.RollIntoView(self.control.GetParentControl(), self.control)
 
-    # @uilock
+    @uilock
     def _click(self, right: bool=False, double: bool=False):
         self.roll_into_view()
         if right:

@@ -4,7 +4,6 @@ from wxauto4.logger import wxlog
 from wxauto4.utils.lock import uilock
 from abc import ABC, abstractmethod
 import win32gui
-from typing import Union
 import time
 
 class BaseUIWnd(ABC):
@@ -17,10 +16,10 @@ class BaseUIWnd(ABC):
 
     def __repr__(self):
         return f"<{PROJECT_NAME} - {self.__class__.__name__} at {hex(id(self))}>"
-    
+
     def __eq__(self, other):
         return self.control == other.control
-    
+
     def __bool__(self):
         return self.exists()
 
@@ -42,7 +41,7 @@ class BaseUIWnd(ABC):
             for i in range(2):
                 self.control.SendKeys('{Esc}')
         except Exception:
-            pass
+            wxlog.debug("关闭窗口时 SendKeys 失败", exc_info=True)
 
     def exists(self, wait=0):
         try:

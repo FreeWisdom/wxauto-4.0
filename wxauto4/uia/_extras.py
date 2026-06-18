@@ -80,7 +80,8 @@ def RollIntoView(win, ele, equal=True, bias=0):
         attempt += 1
 
     if attempt >= max_attempts:
-        print(f"Warning: 滚动操作达到最大尝试次数({max_attempts}),可能元素无法完全滚动到视图内")
+        from wxauto4.logger import wxlog
+        wxlog.debug(f"滚动操作达到最大尝试次数({max_attempts}),可能元素无法完全滚动到视图内")
 
 
 def CheckElementPosition(win, ele, bias=0):

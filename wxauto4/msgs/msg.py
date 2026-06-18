@@ -32,7 +32,6 @@ def parse_msg_attr(
         'right': 'self'
     }
     if control.AutomationId:
-        # uia.RollIntoView(parent.msgbox, control)
         msg_screenshot = control.ScreenShot()
         msg_direction, msg_direction_distence = detect_message_direction(msg_screenshot)
         msg_attr = msg_direction_hash.get(msg_direction)
@@ -49,10 +48,8 @@ def parse_msg_attr(
     if msg_attr == 'system':
         return SystemMessage(control, parent)
     elif msg_attr == 'friend':
-        # return FriendMessage(control, parent)
         return parse_msg_type(control, parent, 'Friend', additonal_attr)
     elif msg_attr == 'self':
-        # return SelfMessage(control, parent)
         return parse_msg_type(control, parent, 'Self', additonal_attr)
 
 def parse_msg_type(
@@ -135,11 +132,4 @@ def parse_msg(
     control: uia.Control,
     parent
 ):
-    # t0 = time.time()
-    result = parse_msg_attr(control, parent)
-    
-    # t1 = time.time()
-    # msgtype = str(result.__class__.__name__).ljust(20)
-    # ms = int((t1 - t0)*1000)
-    # print(f'parse_msg: {msgtype} {"□"*ms} {ms}ms')
-    return result
+    return parse_msg_attr(control, parent)

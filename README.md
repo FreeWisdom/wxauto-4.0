@@ -316,6 +316,33 @@ msg.click()
 msg.right_click()
 ```
 
+### 带 `#举手` 标记的群消息入库与引用回复
+
+```python
+from wxauto4 import HandRaiseReplyWorkflow, WeChat
+
+wx = WeChat()
+workflow = HandRaiseReplyWorkflow(
+    wx,
+    db_path='data/reply_tasks.db',
+    allowed_chats=['群A', '群B'],  # 生产环境可按需要配置；测试时建议显式限制
+)
+
+# 监听回调只做快速入库，不在监听线程中执行搜索或发送。
+workflow.add_listen_chats(['群A', '群B'])
+
+# 查看待处理任务，人工或业务逻辑生成回复内容。
+for task in workflow.list_pending():
+    print(task.id, task.chat_name, task.sender, task.content)
+
+# 搜索原消息 -> 定位到聊天位置 -> 右键引用 -> 发送。
+# 只有发送成功后，数据库状态才会变为 replied。
+workflow.reply(task_id=1, reply_text='收到，我来处理')
+```
+
+SQLite 表中的任务状态依次为 `pending`、`processing`、`replied` 或 `failed`。
+同一条监听消息会按聊天和消息 ID 去重；失败任务可再次调用 `reply()` 重试。
+
 ### 条件匹配
 
 ```python

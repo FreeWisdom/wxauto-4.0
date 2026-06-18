@@ -37,3 +37,26 @@ jobs:
           python -c "import test_module3_listener; print('test_module3_listener OK')"
           python -c "import test_module4_windows_moments; print('test_module4_windows_moments OK')"
           python -c "import test_at; print('test_at OK')"
+
+  test:
+    name: Unit tests (py${{ matrix.python-version }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install package with dev deps
+        run: |
+          pip install -e ".[dev]"
+
+      - name: Run pytest
+        run: pytest tests/ -v

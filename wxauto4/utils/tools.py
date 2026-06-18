@@ -14,6 +14,7 @@ from PIL import Image, ImageEnhance, ImageOps
 
 from wxauto4.param import WxParam
 from wxauto4.uia import uiautomation as uia
+from wxauto4.logger import wxlog
 
 from .win32 import GetAllWindows
 
@@ -127,7 +128,10 @@ def delete_update_files():
     update_dir = home / 'AppData' / 'Roaming' / 'Tencent' / 'xwechat' / 'update'
     if update_dir.exists():
         for file in update_dir.iterdir():
-            shutil.rmtree(file) if file.is_dir() else file.unlink()
+            try:
+                shutil.rmtree(file) if file.is_dir() else file.unlink()
+            except (PermissionError, OSError):
+                pass
 
 
 # ============================================================================================================================================
@@ -514,7 +518,7 @@ def _ocr_sender_from_control(control, content: str = None) -> str:
         try:
             screenshot.unlink(missing_ok=True)
         except Exception:
-            pass
+            wxlog.debug("删除 OCR 截图临时文件失败", exc_info=True)
 
     return ''
 

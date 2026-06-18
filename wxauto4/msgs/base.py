@@ -1,8 +1,4 @@
 from wxauto4 import uia
-from wxauto4.ui.component import (
-    Menu,
-    SelectContactWnd
-)
 from wxauto4.utils import uilock
 from wxauto4.param import WxParam, WxResponse, PROJECT_NAME
 from abc import ABC, abstractmethod
@@ -19,6 +15,7 @@ from hashlib import md5
 
 if TYPE_CHECKING:
     from wxauto4.ui.chatbox import ChatBox
+    from wxauto4.ui.component import Menu, SelectContactWnd
 
 def truncate_string(s: str, n: int=8) -> str:
     s = s.replace('\n', '').strip()
@@ -215,6 +212,7 @@ class HumanMessage(BaseMessage, ABC):
 
     @uilock
     def select_option(self, option: str, timeout=2) -> WxResponse:
+        from wxauto4.ui.component import Menu
         if not self.exists():
             return WxResponse.failure('消息对象已失效')
         self._click(right=True, x=self._bias*2, y=WxParam.DEFAULT_MESSAGE_YBIAS)
@@ -225,26 +223,18 @@ class HumanMessage(BaseMessage, ABC):
     
     @uilock
     def forward(
-        self, 
-        targets: Union[List[str], str], 
+        self,
+        targets: Union[List[str], str],
         timeout: int = 3,
         interval: float = 0.1
     ) -> WxResponse:
-        """转发消息
-
-        Args:
-            targets (Union[List[str], str]): 目标用户列表
-            timeout (int, optional): 超时时间，单位为秒，若为None则不启用超时设置
-            interval (float): 选择联系人时间间隔
-
-        Returns:
-            WxResponse: 调用结果
-        """
+        """转发消息"""
+        from wxauto4.ui.component import SelectContactWnd
         if not self.exists():
             return WxResponse.failure('消息对象已失效')
         if not self.select_option('转发...', timeout=timeout):
             return WxResponse.failure('当前消息无法转发')
-        
+
         select_wnd = SelectContactWnd(self)
         return select_wnd.send(targets, interval=interval)
     

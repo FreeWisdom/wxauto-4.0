@@ -9,6 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 from abc import ABC, abstractmethod
 import threading
 import traceback
+import subprocess
 import time
 import sys
 import os
@@ -227,7 +228,7 @@ class WeChat(Chat, Listener):
         try:
             sys.stdout.flush()
         except Exception:
-            pass
+            wxlog.debug("stdout.flush() 失败", exc_info=True)
         temp_listen = self.listen.copy()
         for who in temp_listen:
             chat, callback = temp_listen.get(who, (None, None))
@@ -420,5 +421,9 @@ class WeChat(Chat, Listener):
 
     def ShutDown(self):
         delete_update_files()
-        os.system(f'taskkill /f /pid {self._api.pid}')
+        subprocess.run(
+            ['taskkill', '/f', '/pid', str(self._api.pid)],
+            capture_output=True,
+            creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
+        )
 

@@ -27,3 +27,56 @@ from ._extras import (  # noqa: F401
     IsElementInWindow,
     RollIntoView,
 )
+
+
+# ---------------------------------------------------------------------------
+# 兼容补丁: uiautomation PyPI 版本 API 与旧内嵌版本不完全一致。
+# 这里注入缺失的方法/属性,确保现有业务代码无需修改。
+# ---------------------------------------------------------------------------
+import os
+import tempfile
+
+
+def _patch_runtimeid():
+    """向 uiautomation.Control 注入 runtimeid property。"""
+    if hasattr(uiautomation.Control, 'runtimeid'):
+        return
+
+    def _get_runtimeid(self):
+        try:
+            return ''.join(str(i) for i in self.GetRuntimeId())
+        except Exception:
+            return ''
+
+    uiautomation.Control.runtimeid = property(_get_runtimeid)
+
+
+def _patch_screenshot():
+    """向 uiautomation.Control 注入 ScreenShot 方法。
+
+    旧内嵌版本: control.ScreenShot() → 返回临时文件路径(str)
+    PyPI 版本:   control.CaptureToImage(savePath) → 返回 bool
+    """
+    if hasattr(uiautomation.Control, 'ScreenShot'):
+        return
+
+    def _screenshot(self):
+        fd, path = tempfile.mkstemp(suffix='.png', prefix='wxauto4_ss_')
+        os.close(fd)
+        try:
+            ok = self.CaptureToImage(path)
+            if ok:
+                return path
+            return ''
+        except Exception:
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+            return ''
+
+    uiautomation.Control.ScreenShot = _screenshot
+
+
+_patch_runtimeid()
+_patch_screenshot()

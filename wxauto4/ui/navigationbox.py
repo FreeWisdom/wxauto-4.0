@@ -1,3 +1,5 @@
+import time
+
 from wxauto4 import uia
 from wxauto4.param import (
     WxParam,
@@ -80,8 +82,6 @@ class NavigationBox:
 
         try:
             ctrl.Click()
-            # 点击后短暂停顿,等待目标页面渲染
-            import time
             time.sleep(0.3)
             return WxResponse.success(f'已切换到 {label_cn}')
         except Exception as e:

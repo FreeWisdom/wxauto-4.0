@@ -48,7 +48,12 @@ class FriendMessage(HumanMessage):
     def _click(self, x, y, right=False):
         self.roll_into_view()
         if right:
-            self.control.RightClick(x=x, y=y, ratioX=0, ratioY=0)
+            h = self.control.BoundingRectangle.height()
+            self.control.RightClick(
+                x=WxParam.DEFAULT_MESSAGE_XBIAS + 50,
+                y=int(h * 0.6),
+                ratioX=0, ratioY=0,
+            )
         else:
             self.control.Click(ratioX=0, ratioY=0)
 
@@ -56,13 +61,8 @@ class FriendMessage(HumanMessage):
     def _bias(self):
         return WxParam.DEFAULT_MESSAGE_XBIAS
 
-    def _resolve_sender(self):
-        """解析发送者,返回 (sender, sender_remark)。
-
-        群聊:子树查找优先(快),extract_sender_from_control 内部已经只在子树
-        找不到且 ENABLE_SENDER_OCR=True 时才走 Windows OCR,无谓开销可控。
-        单聊:发送者就是对方好友,使用 chat_name。
-        """
+    def _resolve_sender(self) -> tuple:
+        """解析发送者,返回 (sender, sender_remark)。"""
         try:
             chat_info = self.parent.parent._chat_api.get_info()
         except Exception:
@@ -104,7 +104,12 @@ class SelfMessage(HumanMessage):
     def _click(self, x, y, right=False):
         self.roll_into_view()
         if right:
-            self.control.RightClick(x=x, y=y, ratioX=1, ratioY=0)
+            h = self.control.BoundingRectangle.height()
+            self.control.RightClick(
+                x=-(WxParam.DEFAULT_MESSAGE_XBIAS + 30),
+                y=int(h * 0.6),
+                ratioX=1, ratioY=0,
+            )
         else:
             self.control.Click(x=x, y=y, ratioX=1, ratioY=0)
 
@@ -112,18 +117,14 @@ class SelfMessage(HumanMessage):
     def _bias(self):
         return -WxParam.DEFAULT_MESSAGE_XBIAS
 
-    def _resolve_sender(self):
-        """自己发的消息:sender 取当前登录账号昵称。
-
-        parent 链: BaseMessage → ChatBox → WeChat/Chat 实例。
-        优先用 owner.nickname,失败时回退到 owner.who,最后兜底 '我'。
-        多账号场景下能正确区分是哪个账号发的消息。
-        """
+    def _resolve_sender(self) -> tuple:
+        """自己发的消息:sender 取当前登录账号昵称。"""
         try:
             owner = self.parent.parent
             nickname = getattr(owner, 'nickname', None) or getattr(owner, 'who', None)
             if nickname:
                 return nickname, nickname
         except Exception:
-            pass
+            from wxauto4.logger import wxlog
+            wxlog.debug("SelfMessage 获取 owner nickname 失败", exc_info=True)
         return '我', '我'

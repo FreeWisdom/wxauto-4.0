@@ -13,6 +13,12 @@ from .exceptions import (
     WxautoUINotFoundError,
 )
 from .utils.lock import LockManager, uilock
+from .reply_queue import (
+    HandRaiseReplyWorkflow,
+    ReplyTask,
+    ReplyTaskStore,
+    SearchMessageLocator,
+)
 
 
 __all__ = [
@@ -27,4 +33,8 @@ __all__ = [
     "NetWorkError",
     "WxautoUINotFoundError",
     "WxautoNoteLoadTimeoutError",
+    "HandRaiseReplyWorkflow",
+    "ReplyTask",
+    "ReplyTaskStore",
+    "SearchMessageLocator",
 ]

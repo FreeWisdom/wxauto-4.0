@@ -12,9 +12,10 @@ from wxauto4.param import WxParam, WxResponse, PROJECT_NAME
 from wxauto4.logger import wxlog
 from wxauto4 import uia
 from typing import (
-    Union, 
+    Optional,
+    Union,
     List,
-    Literal
+    Literal,
 )
 import random
 import os
@@ -69,7 +70,7 @@ class WeChatSubWnd(BaseUISubWnd):
             try:
                 wins.append(uia.ControlFromHandle(hwnd))
             except Exception:
-                pass
+                wxlog.debug(f"ControlFromHandle 失败, hwnd={hwnd}", exc_info=True)
         ignore_cls = ['basepopupshadow', 'popupshadow']
         return [win for win in wins if win.ClassName not in ignore_cls]
     
@@ -100,7 +101,7 @@ class WeChatSubWnd(BaseUISubWnd):
             return WxResponse.failure(f"未找到聊天窗口：{who}")
         return chatbox.send_file(filepath)
     
-    def get_msgs(self):
+    def get_msgs(self) -> list:
         chatbox = self._get_chatbox()
         if chatbox:
             return chatbox.get_msgs()
@@ -109,7 +110,8 @@ class WeChatSubWnd(BaseUISubWnd):
     def get_new_msgs(self):
         return self._get_chatbox().get_new_msgs()
 
-    def get_msg_by_id(self, msg_id):
+    def get_msg_by_id(self, msg_id) -> Optional['Message']:
+        from wxauto4.msgs.base import Message
         chatbox = self._get_chatbox()
         if chatbox:
             return chatbox.get_msg_by_id(msg_id)

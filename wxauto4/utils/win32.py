@@ -13,10 +13,12 @@ import pyperclip
 import psutil
 import ctypes
 from contextlib import contextmanager
+from typing import List, Tuple, Optional
 from PIL import Image
 from wxauto4 import uia
+from wxauto4.logger import wxlog
 
-def GetAllWindows(name=None, classname=None):
+def GetAllWindows(name=None, classname=None) -> List[Tuple[int, str, str]]:
     """
     获取所有窗口的信息，返回一个列表，每个元素包含 (窗口句柄, 类名, 窗口标题)
     """
@@ -57,7 +59,7 @@ def GetPathByHwnd(hwnd):
         process = psutil.Process(process_id)
         return process.exe()
     except Exception as e:
-        print(f"Error: {e}")
+        wxlog.debug(f"GetPathByHwnd error: {e}")
         return None
 
 def GetVersionByPath(file_path):
@@ -71,7 +73,7 @@ def GetVersionByPath(file_path):
         version = None
     return version
 
-def capture(hwnd, bbox):
+def capture(hwnd, bbox) -> Image.Image:
     # 获取窗口的屏幕坐标
     window_rect = win32gui.GetWindowRect(hwnd)
     win_left, win_top, win_right, win_bottom = window_rect
@@ -237,14 +239,13 @@ def SetClipboardData(data_dict):
                 # 如果是字节数据，直接设置
                 win32clipboard.SetClipboardData(format_num, data)
     except Exception as e:
-        print(f"设置剪贴板数据时出错: {e}")
-    
+        wxlog.debug(f"设置剪贴板数据时出错: {e}")
+
     finally:
-        # 关闭剪贴板
         try:
             win32clipboard.CloseClipboard()
         except Exception:
-            pass
+            wxlog.debug("关闭剪贴板时出错(SetClipboardData)", exc_info=True)
 
 def SetClipboardText(text: str):
     pyperclip.copy(text)
@@ -252,15 +253,7 @@ def SetClipboardText(text: str):
 
 @contextmanager
 def preserve_clipboard_text():
-    """备份并恢复剪贴板文本内容。
-
-    发送消息/文件/评论等操作通过剪贴板传输内容时,会覆盖用户原剪贴板。
-    本 contextmanager 在进入前备份文本,退出后恢复,避免静默清空用户复制的
-    密码、验证码、链接等内容。
-
-    注意:只处理文本格式(CF_UNICODETEXT),不处理文件(CF_HDROP)、图片等。
-    备份或恢复失败时静默忽略(剪贴板操作可能在锁屏、远程桌面等场景下异常)。
-    """
+    """备份并恢复剪贴板文本内容。"""
 
     backup = None
     try:
@@ -274,7 +267,7 @@ def preserve_clipboard_text():
             try:
                 pyperclip.copy(backup)
             except Exception:
-                pass
+                wxlog.debug("恢复剪贴板内容失败", exc_info=True)
 
 
 class DROPFILES(ctypes.Structure):
@@ -311,10 +304,8 @@ def set_files_to_clipboard(file_paths):
             valid_paths.append(abs_path)
         else:
             raise ValueError(f"文件路径不存在: {path}")
-            # print(f"警告: 文件路径不存在: {path}")
-    
+
     if not valid_paths:
-        # print("错误: 没有有效的文件路径")
         return False
     
     try:
@@ -351,11 +342,7 @@ def set_files_to_clipboard(file_paths):
         
         # 设置到剪贴板
         win32clipboard.SetClipboardData(win32con.CF_HDROP, hdrop_data)
-        
-        # print(f"成功设置 {len(valid_paths)} 个文件到剪贴板:")
-        # for path in valid_paths:
-        #     print(f"  - {path}")
-        
+
         return True
         
     except Exception as e:
@@ -363,16 +350,15 @@ def set_files_to_clipboard(file_paths):
         return False
     
     finally:
-        # 关闭剪贴板
         try:
             win32clipboard.CloseClipboard()
         except Exception:
-            pass
+            wxlog.debug("关闭剪贴板时出错(SetClipboardFiles)", exc_info=True)
 
-def SetClipboardFiles(paths):
+def SetClipboardFiles(paths) -> Optional[bool]:
     set_files_to_clipboard(paths)
 
-def PasteFile(folder):
+def PasteFile(folder: str) -> Optional[bool]:
     folder = os.path.realpath(folder)
     if not os.path.exists(folder):
         os.makedirs(folder)
@@ -391,10 +377,11 @@ def PasteFile(folder):
                     shutil.copy2(file, dest_file)
                     return True
             else:
-                print("剪贴板中没有文件")
+                wxlog.debug("剪贴板中没有文件")
                 return False
         except Exception:
-            pass
+            wxlog.debug("PasteFile 读取剪贴板异常", exc_info=True)
+            time.sleep(0.05)
         finally:
             win32clipboard.CloseClipboard()
 
@@ -428,10 +415,14 @@ def is_window_visible(hwnd):
         return True
     return False
 
-def get_windows_by_pid(pid):
+def get_windows_by_pid(pid: int) -> List[int]:
+    retries = 0
     while True:
         try:
             windows = enum_windows_by_pid(pid)
             return windows
         except Exception:
+            retries += 1
+            if retries > 100:
+                return []
             time.sleep(0.1)

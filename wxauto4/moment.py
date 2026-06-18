@@ -258,8 +258,7 @@ class MomentList(BaseUISubWnd):
         self.control = self._locate_list(parent)
         # 初次定位失败时,等待朋友圈控件渲染后再重试一次,缓解 refresh=True 返回 0 条的问题
         if self.control is None:
-            import time as _time
-            _time.sleep(1.0)
+            time.sleep(1.0)
             self.control = self._locate_list(parent)
         self._items: Optional[List[MomentItem]] = None
 
@@ -549,7 +548,7 @@ class MomentActionMenu(BaseUISubWnd):
         try:
             self.control.SendKeys('{Esc}')
         except Exception:
-            pass
+            wxlog.debug("MomentActionMenu 关闭失败", exc_info=True)
 
 
 class MomentCommentDialog(BaseUISubWnd):

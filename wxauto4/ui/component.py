@@ -56,6 +56,7 @@ class Menu(BaseUISubWnd):
     def __init__(self, parent, timeout=2):
         self.parent = parent
         self.root = parent.root
+        self.control = None
         t0 = time.time()
         while True:
             if time.time() - t0 > timeout:
@@ -63,8 +64,9 @@ class Menu(BaseUISubWnd):
             wins = GetAllWindows(classname=self._win_cls_name,name=self._win_name)
             _find = False
             for win in wins:
-                self.control = uia.ControlFromHandle(win[0])
-                if self.control.ClassName == self._ui_cls_name:
+                candidate = uia.ControlFromHandle(win[0])
+                if candidate.ClassName == self._ui_cls_name:
+                    self.control = candidate
                     _find = True
                     break
             if _find:
@@ -72,6 +74,8 @@ class Menu(BaseUISubWnd):
     
     @property
     def option_controls(self):
+        if not self.exists(0):
+            return []
         return [
             i for i in
             self.control.GetChildren()

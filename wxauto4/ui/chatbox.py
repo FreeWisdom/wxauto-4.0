@@ -13,6 +13,7 @@ from wxauto4.ui.component import (
     Menu
 )
 from wxauto4.logger import wxlog
+from wxauto4.utils.lock import uilock
 from .base import (
     BaseUISubWnd
 )
@@ -60,7 +61,7 @@ class ChatBox(BaseUISubWnd):
         self._who = self.editbox.Name
         return self._who
     
-    def get_info(self):
+    def get_info(self) -> dict:
         chat_info = {}
         chat_info_control = self.control.GetParentControl().GroupControl(ClassName="mmui::ChatInfoView")
         aid_head = 'top_content_h_view.top_spacing_v_view.top_left_info_v_view.big_title_line_h_view.'
@@ -121,7 +122,7 @@ class ChatBox(BaseUISubWnd):
         self.editbox.SendKeys('{DELETE}')
 
 
-    def send_text(self, content: str):
+    def send_text(self, content: str) -> WxResponse:
         with preserve_clipboard_text():
             self._show()
             t0 = time.time()
@@ -153,7 +154,7 @@ class ChatBox(BaseUISubWnd):
                 elif not self.editbox.GetValuePattern().Value.replace('￼', '').strip():
                     return self.send_text(content)
 
-    def send_msg(self, content: str, clear: bool=True, at=None):
+    def send_msg(self, content: str, clear: bool = True, at=None) -> WxResponse:
         wxlog.debug(f"发送消息: {content}")
         if not content and not at:
             return WxResponse.failure(f"`content` and `at` can't be empty at the same time")
@@ -165,8 +166,8 @@ class ChatBox(BaseUISubWnd):
 
         return self.send_text(content)
     
-    # @uilock
-    def send_file(self, file_path):
+    @uilock
+    def send_file(self, file_path) -> WxResponse:
         wxlog.debug(f"发送文件: {file_path}")
         if isinstance(file_path, str):
             file_path = [file_path]
@@ -197,7 +198,7 @@ class ChatBox(BaseUISubWnd):
             self.sendbtn.Click()
         return WxResponse.success('发送文件成功')
 
-    def input_at(self, at_list):
+    def input_at(self, at_list: Union[str, list]) -> None:
         if isinstance(at_list, str):
             at_list = [at_list]
         self._activate_editbox()
@@ -206,7 +207,7 @@ class ChatBox(BaseUISubWnd):
             atmenu = AtMenu(self)
             atmenu.select(friend)
         
-    def get_msgs(self):
+    def get_msgs(self) -> list:
         if self.msgbox.Exists(0):
             return [
                 parse_msg(msg_control, self)
